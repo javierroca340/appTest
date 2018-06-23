@@ -8,23 +8,27 @@ var graph = require('fbgraph'),
     _ = require('underscore'),
     crypto = require('crypto'),
     express = require('express'),
+    app     = express(),
+    fs = require('fs'),
     connect = require('connect'),
     MongoStore = require('connect-mongo'),
-    mongoose = require('mongoose');
+    mongoose = require('mongoose'),
+	path = require('path'),
+	https = require('https');
 
 var config = {
 
     // Base URL of the App (must be a publically accessible URL)
-    redirect_uri:  'http://agile-anchorage-2261.herokuapp.com',
+	redirect_uri:  'http://192.168.1.54:8080',
 
     // Facebook Application ID
-    client_id:     '362146057147121',
+    client_id:     '209667562996244',
 
     // Facebook Application Secret
-    client_secret: '4bb7b7dc7358cd42384ee49c91f00d0f',
+    client_secret: 'b269c40e3ee57513634481193416d6ea',
 
     // MongoDB endpoint
-    mongoDb:       'mongodb://user:password@ds051067.mongolab.com:51067/run-with-new-friends',
+    mongoDb:       'mongodb://localhost:27017/test',
 
     // Session encyption key
     sessionSecret: 'asdhas87y234?@#$ewfdhgsadjfhbasd!@#asdasdbasyihd'
@@ -43,31 +47,66 @@ Run = mongoose.model('Run', new mongoose.Schema({
 }));
 
 
-
-// App server setup
-
-var app = express.createServer(
-
-    connect.static(__dirname + '/public'),
-    connect.cookieParser(),
-
-    express.session({
-        secret: config.sessionSecret,
-        store: new MongoStore({ url: config.mongoDb })
-    }),
-
-    connect.bodyParser(),
-    express.logger(),
-    express.errorHandler({ dumpExceptions: true })
-);
-
-app.enable('jsonp callback');
-
-var port = process.env.PORT || 3000;
-app.listen(port, function() {
-    console.log("Listening on " + port);
+var public = path.join(__dirname, 'public/');
+app.get('/', function(req, res) {
+    res.sendFile(path.join(public, 'index.html'));
+    return void 0;
 });
 
+//var http = require('http').Server(app);
+//app.use(bodyParser.json());
+//app.use(bodyParser.urlencoded({extended: true}));
+
+app.use('/', express.static(public));
+var options = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem'),
+};
+
+var server = https.createServer(options, app);
+
+var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
+    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '192.168.1.54',
+    url  = "mongodb://localhost:27017/test";
+
+var db = null,
+    dbDetails = new Object();
+
+var initDb = function(callback) {
+
+  var mongodb = require('mongodb');
+  if (mongodb == null) return;
+
+  mongodb.connect(url, function(err, conn) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    db = conn;
+    dbDetails.databaseName = db.databaseName;
+    dbDetails.type = 'MongoDB';
+
+  });
+};
+
+
+server.listen(port, ip);
+
+app.get('/pagecount', function (req, res) {
+  // try to initialize the db on every request if it's not already
+  // initialized.
+  if (!db) {
+    initDb(function(err){});
+  }
+  if (db) {
+    db.collection('counts').count(function(err, count ){
+      res.send('{ pageCount: ' + count + '}');
+    });
+  } else {
+    res.send('{ pageCount: -1 }');
+  }
+});
 
 
 /**

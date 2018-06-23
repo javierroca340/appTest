@@ -1,5 +1,5 @@
 # JogWithFriends
-
+//
 A Sencha Touch 2 application that allows you to share jogging events with your facebook friends.
 
 ## Setting up JogWithFriends

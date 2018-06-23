@@ -1,7 +1,7 @@
 Ext.Loader.setConfig({
     enabled: true,
     paths: {
-        JWF: '/resources/js'
+        JWF: '/app'
     }
 });
 
@@ -35,7 +35,7 @@ Ext.application({
     ],
 
     launch: function() {
-        this.facebookAppId = '209667562996244';
+        this.facebookAppId = '362146057147121';
 
         if (this.facebookAppId === '') {
             Ext.create('Ext.Component', {
